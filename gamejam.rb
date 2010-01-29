@@ -8,6 +8,7 @@ class Gamejam < Chingu::Window
     @world = World.create
     @player = Player.create
     @world.input = {:holding_right => :start_rotation, :released_right => :finish_rotation}
+    self.input = {:escape => :close}
   end
 end
 
@@ -16,6 +17,7 @@ class World < Chingu::GameObject
   
   def initialize(options={})
     super options.merge(:image => Gosu::Image['assets/world.png'])
+    self.x, self.y = 400, 300
   end
   
   def start_rotation
@@ -31,6 +33,7 @@ end
 class Player < Chingu::GameObject
   def initialize(options={})
     super options.merge(:image => Gosu::Image['assets/player.png'])
+    self.x, self.y = 400, 300
   end
 end
 
