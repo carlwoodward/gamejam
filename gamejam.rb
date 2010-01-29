@@ -17,7 +17,7 @@ class Gamejam < Chingu::Window
     @king = King.create
     @crown = Crown.create
     @world.input = world_input
-    5.times { @world.enemies << Enemy.create(@world, @king) }
+    @world.enemies << Enemy.create(@world, @king)
     @world.pivot = Pivot.create
     self.input = {:escape => :close}
   end
@@ -59,10 +59,9 @@ class World < Chingu::GameObject
       
       child.x = translated_x + anchor_x
       child.y = translated_y + anchor_y
-      # child.angle += theta
-      # speed = 1
-      # child.velocity_x = speed.to_f * Math.cos(child.angle.gosu_to_radians)
-      # child.velocity_y = speed.to_f * Math.sin(child.angle.gosu_to_radians)
+      child.angle -= new_angle
+      child.velocity_x = child.default_speed.to_f * Math.cos(child.angle.gosu_to_radians)
+      child.velocity_y = child.default_speed.to_f * Math.sin(child.angle.gosu_to_radians)
     end
   end
 
@@ -87,7 +86,7 @@ class Enemy < Chingu::GameObject
 
   def initialize(world, king, options={})
     super options.merge(:image => Gosu::Image['assets/triangle.png'])
-    self.x, self.y = rand(Gamejam.width), rand(Gamejam.height)
+    self.x, self.y = 480, 100
     self.world, self.king = world, king
     direct_to_king!
   end
@@ -104,8 +103,11 @@ class Enemy < Chingu::GameObject
   def direct_to_king!
     self.angle = Gosu.angle(x, y, king.x, king.y)
     angle_in_rads = angle.gosu_to_radians
-    speed = 1.0
-    self.velocity_x, self.velocity_y = speed.to_f * Math.cos(angle_in_rads), speed.to_f * Math.sin(angle_in_rads)
+    self.velocity_x, self.velocity_y = default_speed.to_f * Math.cos(angle_in_rads), default_speed.to_f * Math.sin(angle_in_rads)
+  end
+  
+  def default_speed
+    0.3
   end
 end
 
