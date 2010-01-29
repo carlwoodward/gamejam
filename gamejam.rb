@@ -58,12 +58,10 @@ class World < Chingu::GameObject
 
       child.x = translated_x + x
       child.y = translated_y + y
-      # puts "old x vel #{child.velocity_x} old angle #{child.angle}"
-      # speed = 1
-      # child.velocity_x = speed.to_f * Math.cos(theta)
-      # child.velocity_y = speed.to_f * Math.sin(theta)
+      speed = 1
+      child.velocity_x = speed.to_f * Math.cos(child.angle.gosu_to_radians)
+      child.velocity_y = speed.to_f * Math.sin(child.angle.gosu_to_radians)
       child.angle += theta
-      # puts "new x vel #{speed.to_f * Math.cos(theta)} new angle #{child.angle}"
     end
   end
 
