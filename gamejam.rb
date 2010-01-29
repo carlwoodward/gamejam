@@ -128,7 +128,12 @@ end
 class Pivot < Chingu::GameObject
   def initialize(options={})
     super options.merge(:image => Gosu::Image['assets/pivot.png'])
-    self.x, self.y = 100,100
+  end
+
+  def update
+    super
+    self.x = $window.mouse_x
+    self.y = $window.mouse_y
   end
 end
 
