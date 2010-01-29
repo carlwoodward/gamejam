@@ -18,7 +18,7 @@ class Gamejam < Chingu::Window
     @crown = Crown.create
     @world.input = world_input
     5.times { @world.enemies << Enemy.create(@world, @king) }
-    @pivot = Pivot.create
+    @world.pivot = Pivot.create
     self.input = {:escape => :close}
   end
 
@@ -32,7 +32,7 @@ end
 class World < Chingu::GameObject
   has_trait :angular_momentum, :max_angular_velocity => 8
   has_trait :timer
-  attr_accessor :enemies
+  attr_accessor :enemies, :pivot
   def initialize(options={})
     super options.merge(:image => Gosu::Image['assets/blue.png'])
     self.x, self.y = Gamejam.center
@@ -51,7 +51,7 @@ class World < Chingu::GameObject
     if previous_angle != angle
       new_angle = (previous_angle - angle)
       theta = new_angle.gosu_to_radians
-      anchor_x, anchor_y = 100, 100
+      anchor_x, anchor_y = pivot.x, pivot.y
       vx = child.x - anchor_x.to_f
       vy = child.y - anchor_y.to_f
       translated_x = vy * Math.cos(theta) - vx * Math.sin(theta)
