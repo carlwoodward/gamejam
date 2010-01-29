@@ -7,26 +7,24 @@ class Gamejam < Chingu::Window
     super
     @world = World.create
     @player = Player.create
-    @world.input = {:holding_left => :rot_left, :holding_right => :rot_right}
+    @world.input = {:holding_right => :start_rotation, :released_right => :finish_rotation}
   end
 end
 
 class World < Chingu::GameObject
-  has_traits :angle_velocity
+  has_traits :angle_velocity, :timer
   
   def initialize(options={})
     super options.merge(:image => Gosu::Image['assets/world.png'])
-    self.velocity_angle = 1
-    self.acceleration_angle = 0.4
   end
   
-  def rot_left
-    self.angle -= 1
-    during(300) { @color = Color.new(0xFFFFFFFF) }
+  def start_rotation
+    stop_timers
+    self.acceleration_angle = 0.075
   end
   
-  def rot_right
-    self.angle += 1
+  def finish_rotation
+    during(2000) { self.acceleration_angle *= 0.95; self.velocity_angle *= 0.95 }.then { self.acceleration_angle = 0; self.velocity_angle = 0 }
   end
 end
 
