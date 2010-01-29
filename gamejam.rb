@@ -10,7 +10,7 @@ class Gamejam < Chingu::Window
       [width / 2, height / 2]
     end
   end
-  
+
   def initialize
     super(self.class.width, self.class.height)
     @world = World.create
@@ -30,7 +30,6 @@ end
 class World < Chingu::GameObject
   has_traits :angle_velocity, :timer
   attr_accessor :enemies
-  
   def initialize(options={})
     super options.merge(:image => Gosu::Image['assets/blue.png'])
     self.x, self.y = Gamejam.center
@@ -69,12 +68,15 @@ class World < Chingu::GameObject
   end
 end
 
-class Player < Chingu::GameObject
+class King < Chingu::GameObject
+  has_trait :bounding_circle
   def initialize(options={})
     super options.merge(:image => Gosu::Image['assets/king.png'])
     self.x, self.y = Gamejam.center
+    self.factor = 30.0 / 2310
   end
 end
+
 
 class Enemy < Chingu::GameObject
   has_traits :velocity
