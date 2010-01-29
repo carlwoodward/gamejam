@@ -86,17 +86,17 @@ class Enemy < Chingu::GameObject
     super options.merge(:image => Gosu::Image['assets/triangle.png'])
     self.x, self.y = 300, 300
     self.player = player
-    # find_king
+    find_king
   end
   
   def update
-    
   end
   
   def find_king
-    self.angle = Gosu::angle self.x, self.y, player.x, player.y
+    self.angle = Gosu.angle(x, y, player.x, player.y)
+    angle_in_rads = angle.gosu_to_radians
     speed = 1
-    self.velocity_x, self.velocity_y = speed.to_f * Math.cos(angle), speed.to_f * Math.sin(angle)
+    self.velocity_x, self.velocity_y = speed.to_f * Math.cos(angle_in_rads), speed.to_f * Math.sin(angle_in_rads)
   end
 end
 
