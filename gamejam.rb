@@ -31,7 +31,7 @@ class World < Chingu::GameObject
   attr_accessor :enemies, :pivot
 
   BACKGROUND_DIM = 2310
-  
+
   def initialize(options={})
     super options.merge(:image => Gosu::Image['assets/blue.png'])
     self.x, self.y = Gamejam.center
@@ -49,7 +49,7 @@ class World < Chingu::GameObject
   def update
     enemies.each {|enemy| transform(enemy)} unless previous_angle == angle
   end
-  
+
   def transform(child)
     new_angle = (previous_angle - angle)
     theta = new_angle.gosu_to_radians
@@ -69,12 +69,11 @@ class World < Chingu::GameObject
   %w(left right).each do |dir|
 
     define_method "step_#{dir}" do
-      self.x = $window.mouse_x
-      self.y = $window.mouse_y
+      self.center_x = (center_x*BACKGROUND_DIM + $window.mouse_x-x) / BACKGROUND_DIM
+      self.center_y = (center_y*BACKGROUND_DIM + $window.mouse_y-y) / BACKGROUND_DIM
 
-
-      self.center_x = 2310 / ((BACKGROUND_DIM/center_x) - (Gamejam.width/2) + $window.mouse_x)
-      self.center_y = 2310 / ((BACKGROUND_DIM/center_y) - (Gamejam.height/2) + $window.mouse_y)
+      self.x += $window.mouse_x - x
+      self.y += $window.mouse_y - y
 
       send("rotate_#{dir}".to_sym)
     end
@@ -118,7 +117,7 @@ class Enemy < Chingu::GameObject
   def default_speed
     0.3
   end
-  
+
   def point_at(pt)
     self.angle = Gosu.angle(x, y, pt.x, pt.y)
     self.velocity_x, self.velocity_y = Gosu.offset_x(angle, speed), Gosu.offset_y(angle, speed)
