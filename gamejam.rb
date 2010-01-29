@@ -18,6 +18,7 @@ class Gamejam < Chingu::Window
     @crown = Crown.create
     @world.input = world_input
     5.times { @world.enemies << Enemy.create(@world, @king) }
+    @pivot = Pivot.create
     self.input = {:escape => :close}
   end
 
@@ -121,6 +122,13 @@ class King < Chingu::GameObject
     super options.merge(:image => Gosu::Image['assets/king.png'])
     self.x, self.y = Gamejam.center
     self.factor = 30.0 / 2310
+  end
+end
+
+class Pivot < Chingu::GameObject
+  def initialize(options={})
+    super options.merge(:image => Gosu::Image['assets/pivot.png'])
+    self.x, self.y = 100,100
   end
 end
 
