@@ -5,7 +5,7 @@ require 'angular_momentum'
 class Gamejam < Chingu::Window
   class << self
     def width; 960; end
-    def height; 540; end
+    def height; 640; end
     def center
       [width / 2, height / 2]
     end
@@ -16,8 +16,7 @@ class Gamejam < Chingu::Window
     @world = World.create
     @king = King.create
     @crown = Crown.create
-    @world.enemies << Enemy.create(@world, @king)
-    5.times { @world.enemies << Enemy.create(@world, @king) }
+    5.times { @world.enemies << Enemy.create(@king) }
     @world.pivot = Pivot.create
     self.input = {:escape => :close}
   end
@@ -62,8 +61,8 @@ class World < Chingu::GameObject
     child.x = translated_x + anchor_x
     child.y = translated_y + anchor_y
     child.angle -= new_angle
-    child.velocity_x = child.default_speed.to_f * Math.cos(child.angle.gosu_to_radians)
-    child.velocity_y = child.default_speed.to_f * Math.sin(child.angle.gosu_to_radians)
+    child.velocity_x = child.speed.to_f * Math.cos(child.angle.gosu_to_radians)
+    child.velocity_y = child.speed.to_f * Math.sin(child.angle.gosu_to_radians)
   end
 
   %w(left right).each do |dir|
@@ -96,26 +95,23 @@ class Enemy < Chingu::GameObject
 
   has_traits :velocity, :bounding_box, :collision_detection
 
-  attr_accessor :world, :speed
-
-  def initialize(world, king, options={})
+  def initialize(king, options={})
     super options.merge(:image => Gosu::Image['assets/triangle.png'])
     self.x, self.y = rand(Gamejam.width), rand(Gamejam.height)
-    self.world, self.speed = world, 0.2
     point_at king
   end
 
   def update
     self.class.all.each do |enemy|
-      # if enemy != self && collides? enemy
-      #   self.alpha = 128
-      #   enemy.alpha = 128
-      # end
+      if enemy != self && collides?(enemy)
+        self.alpha = 128
+        enemy.alpha = 128
+      end
     end
   end
 
-  def default_speed
-    0.3
+  def speed
+    1
   end
 
   def point_at(pt)
