@@ -16,7 +16,7 @@ class Gamejam < Chingu::Window
     @world = World.create
     @player = King.create
     @world.input = world_input
-    @world.enemies << Enemy.create(@player)
+    5.times { @world.enemies << Enemy.create(@world, @player) }
     self.input = {:escape => :close}
   end
   
@@ -37,14 +37,17 @@ class World < Chingu::GameObject
   end
   
   def update
-    enemies.each do |enemy|
-      translate_child_to_self(enemy)
-    end
+    enemies_follow_rotation
   end
   
-  def translate_child_to_self(child)
+  def enemies_follow_rotation
+    enemies.each { |enemy| follow_rotation enemy }
+  end
+  
+  def follow_rotation(child)
     if previous_angle != angle
-      theta = (previous_angle - angle).gosu_to_radians
+      new_angle = (previous_angle - angle)
+      theta = new_angle.gosu_to_radians
 
       vx = child.x - x.to_f
       vy = child.y - y.to_f
@@ -53,6 +56,12 @@ class World < Chingu::GameObject
 
       child.x = translated_x + x
       child.y = translated_y + y
+      # puts "old x vel #{child.velocity_x} old angle #{child.angle}"
+      # speed = 1
+      # child.velocity_x = speed.to_f * Math.cos(theta)
+      # child.velocity_y = speed.to_f * Math.sin(theta)
+      child.angle += theta
+      # puts "new x vel #{speed.to_f * Math.cos(theta)} new angle #{child.angle}"
     end
   end
   
@@ -77,19 +86,25 @@ class King < Chingu::GameObject
   end
 end
 
-
 class Enemy < Chingu::GameObject
-  has_traits :velocity
-  attr_accessor :player
+  has_traits :velocity, :bounding_box, :collision_detection
+  attr_accessor :player, :world
     
-  def initialize(player, options={})
+  def initialize(world, player, options={})
     super options.merge(:image => Gosu::Image['assets/triangle.png'])
-    self.x, self.y = 300, 300
+    self.x, self.y = rand(Gamejam.width), rand(Gamejam.height)
     self.player = player
+    self.world = world
     find_king
   end
   
   def update
+    (world.enemies - [self]).each do |enemy|
+      if collides? enemy
+        self.alpha = 128
+        enemy.alpha = 128
+      end
+    end
   end
   
   def find_king
