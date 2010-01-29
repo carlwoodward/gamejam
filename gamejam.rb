@@ -48,18 +48,18 @@ class World < Chingu::GameObject
     if previous_angle != angle
       new_angle = (previous_angle - angle)
       theta = new_angle.gosu_to_radians
-
-      vx = child.x - x.to_f
-      vy = child.y - y.to_f
+      anchor_x, anchor_y = 100, 100
+      vx = child.x - anchor_x.to_f
+      vy = child.y - anchor_y.to_f
       translated_x = vy * Math.cos(theta) - vx * Math.sin(theta)
       translated_y = -vx * Math.cos(theta) - vy * Math.sin(theta)
-
-      child.x = translated_x + x
-      child.y = translated_y + y
-      speed = 1
-      child.velocity_x = speed.to_f * Math.cos(child.angle.gosu_to_radians)
-      child.velocity_y = speed.to_f * Math.sin(child.angle.gosu_to_radians)
-      child.angle += theta
+      
+      child.x = translated_x + anchor_x
+      child.y = translated_y + anchor_y
+      # child.angle += theta
+      # speed = 1
+      # child.velocity_x = speed.to_f * Math.cos(child.angle.gosu_to_radians)
+      # child.velocity_y = speed.to_f * Math.sin(child.angle.gosu_to_radians)
     end
   end
   
