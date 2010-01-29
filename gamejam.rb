@@ -10,15 +10,19 @@ class Gamejam < Chingu::Window
       [width / 2, height / 2]
     end
   end
+  
+  attr_accessor :score, :king, :enemy_waves
 
   def initialize
     super(self.class.width, self.class.height)
     @world = World.create
-    @king = King.create
+    self.king = King.create
+    self.enemy_waves = EnemyWaves.create
+    enemy_waves.spawn
     @crown = Crown.create
-    5.times { @world.enemies << Enemy.create(@king) }
     @world.pivot = Pivot.create
     self.input = {:escape => :close}
+    self.score = 0
   end
 end
 
@@ -46,7 +50,13 @@ class World < Chingu::GameObject
   end
 
   def update
-    enemies.each {|enemy| transform(enemy)} unless previous_angle == angle
+    $window.enemy_waves.current_wave.each {|enemy| transform(enemy)} unless previous_angle == angle
+    draw_score
+  end
+  
+  def draw_score
+    PulsatingText.destroy_if { |text| text.size == 40}
+    PulsatingText.create($window.score, :x => 40, :y => Gamejam.height - 80, :size => 40)
   end
 
   def transform(child)
@@ -91,21 +101,45 @@ class World < Chingu::GameObject
   end
 end
 
+class EnemyWaves < Chingu::BasicGameObject
+  has_traits :timer
+  
+  attr_accessor :waves
+  
+  def initialize
+    super
+    self.waves = []
+    
+    every(3000, :name => 'spawning') do
+      spawn
+    end
+  end
+  
+  def spawn
+    enemies = 10.times.to_a.collect { Enemy.create($window.king) }
+    self.waves << enemies
+  end
+  
+  def current_wave
+    waves.last
+  end
+end
+
 class Enemy < Chingu::GameObject
 
-  has_traits :velocity, :bounding_box, :collision_detection
+  has_traits :velocity, :bounding_box, :collision_detection, :timer
 
   def initialize(king, options={})
     super options.merge(:image => Gosu::Image['assets/triangle.png'])
     self.x, self.y = rand(Gamejam.width), rand(Gamejam.height)
     point_at king
+    @death_animation = Chingu::Animation.new(:file => "assets/particle.png", :size => [32,32])
   end
 
   def update
     self.class.all.each do |enemy|
       if enemy != self && collides?(enemy)
-        self.alpha = 128
-        enemy.alpha = 128
+        during(1500) { @image = @death_animation.next }.then {self.destroy; $window.score += 1}
       end
     end
   end
@@ -144,6 +178,35 @@ class Pivot < Chingu::GameObject
   def update
     self.x, self.y = $window.mouse_x, $window.mouse_y
   end
+end
+
+class PulsatingText < Chingu::Text
+  has_traits :timer, :effect
+  
+  def initialize(text, options = {})
+    super(text, options)
+    
+    options = text  if text.is_a? Hash
+    @pulse = options[:pulse] || false
+    self.rotation_center(:center_center)
+    every(20) { create_pulse }   if @pulse == false
+  end
+  
+  def create_pulse
+    pulse = PulsatingText.create(@text, :x => @x, :y => @y, :height => @height, :pulse => true, :image => @image, :zorder => @zorder+1)
+    colors = [Gosu::Color::RED, Gosu::Color::GREEN, Gosu::Color::BLUE]
+    pulse.color = colors[rand(colors.size)].dup
+    pulse.mode = :additive
+    pulse.alpha -= 150
+    pulse.scale_rate = 0.002
+    pulse.fade_rate = -3 + rand(2)
+    pulse.rotation_rate = rand(2)==0 ? 0.05 : -0.05
+  end
+    
+  def update
+    destroy if self.alpha == 0
+  end
+  
 end
 
 
