@@ -14,7 +14,7 @@ class Gamejam < Chingu::Window
   def initialize
     super(self.class.width, self.class.height)
     @world = World.create
-    @player = Player.create
+    @player = King.create
     @world.input = world_input
     @world.enemies << Enemy.create(@player)
     self.input = {:escape => :close}
@@ -43,17 +43,17 @@ class World < Chingu::GameObject
   end
   
   def translate_child_to_self(child)
-    dx = x - child.x
-    dy = y - child.y
-    theta = previous_angle - angle
-    child.x = dx * Math.cos(theta) - dy * Math.sin(theta)
-    # p child.y = dx * Math.sin(theta) + dy * Math.cos(theta)
-    # child.x += Gosu.offset_x(angle, x-child.x)
-    # child.y += Gosu.offset_y(angle, y-child.y)
-    # child.x += Gosu.offset_y(angle, y)
-    # d = Gosu.distance(x, y, enemy.x, enemy.y)
-    # enemy.x = Gosu.offset_x(angle_delta, d)
-    # enemy.y = Gosu.offset_y(angle_delta, d)
+    if previous_angle != angle
+      theta = (previous_angle - angle).gosu_to_radians
+
+      vx = child.x - x.to_f
+      vy = child.y - y.to_f
+      translated_x = vy * Math.cos(theta) - vx * Math.sin(theta)
+      translated_y = -vx * Math.cos(theta) - vy * Math.sin(theta)
+
+      child.x = translated_x + x
+      child.y = translated_y + y
+    end
   end
   
   %w(left right).each do |dir|
@@ -84,7 +84,7 @@ class Enemy < Chingu::GameObject
     
   def initialize(player, options={})
     super options.merge(:image => Gosu::Image['assets/triangle.png'])
-    self.x, self.y = 100, 100
+    self.x, self.y = 300, 300
     self.player = player
     # find_king
   end
