@@ -11,11 +11,11 @@ class Gamejam < Chingu::Window
     end
   end
   
-  attr_accessor :score, :king, :enemy_waves
+  attr_accessor :score, :king, :enemy_waves, :world
 
   def initialize
     super(self.class.width, self.class.height)
-    @world = World.create
+    self.world = World.create
     self.king = King.create
     self.enemy_waves = EnemyWaves.create
     enemy_waves.spawn
@@ -36,7 +36,8 @@ class World < Chingu::GameObject
   BACKGROUND_DIM = 2310
 
   def initialize(options={})
-    super options.merge(:image => Gosu::Image['assets/blue.png'])
+    @backgrounds = [Gosu::Image['assets/blue.png'], Gosu::Image['assets/purple.png'], Gosu::Image['assets/yellow.png']]
+    super options.merge(:image => @backgrounds[rand(@backgrounds.length)])
     self.x, self.y = Gamejam.center
     self.enemies = []
     self.input = {
@@ -52,6 +53,10 @@ class World < Chingu::GameObject
   def update
     $window.enemy_waves.current_wave.each {|enemy| transform(enemy)} unless previous_angle == angle
     draw_score
+  end
+  
+  def change_background
+    @image = @backgrounds[rand(@backgrounds.length)]
   end
   
   def draw_score
@@ -115,9 +120,19 @@ class EnemyWaves < Chingu::BasicGameObject
     end
   end
   
+  def all_enemies
+    self.waves.flatten
+  end
+  
+  def kill_all
+    all_enemies.each {|enemy| enemy.destroy}
+    stop_timers
+  end
+  
   def spawn
-    enemies = 10.times.to_a.collect { Enemy.create($window.king) }
+    enemies = 5.times.to_a.collect { Enemy.create($window.king) }
     self.waves << enemies
+    $window.world.change_background
   end
   
   def current_wave
@@ -127,7 +142,7 @@ end
 
 class Enemy < Chingu::GameObject
 
-  has_traits :velocity, :bounding_box, :collision_detection, :timer
+  has_traits :velocity, :bounding_circle, :collision_detection, :timer
 
   def initialize(king, options={})
     super options.merge(:image => Gosu::Image['assets/triangle.png'])
@@ -162,11 +177,32 @@ class Crown < Chingu::GameObject
 end
 
 class King < Chingu::GameObject
-  has_trait :bounding_circle
+  has_traits :bounding_box, :collision_detection
+  
   def initialize(options={})
     super options.merge(:image => Gosu::Image['assets/king.png'])
     self.x, self.y = Gamejam.center
     self.factor = 30.0 / 2310
+  end
+  
+  def update
+    Enemy.all.each do |enemy|
+      if self.collides?(enemy)
+        $window.score -= 1
+        enemy.destroy
+        if $window.score < -20
+          $window.push_game_state GameOver
+        end
+      end
+    end
+  end
+end
+
+class GameOver < Chingu::GameState
+  def update
+    PulsatingText.destroy_if { |text| text.size == 100}
+    PulsatingText.create("YOU DIED", :x => 400, :y => 200, :size => 100)
+    $window.enemy_waves.kill_all
   end
 end
 
