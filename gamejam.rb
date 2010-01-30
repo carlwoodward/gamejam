@@ -31,12 +31,16 @@ class World < Chingu::GameObject
   has_trait :angular_momentum, :max_angular_velocity => 8
   has_trait :timer
 
-  attr_accessor :enemies, :pivot
+  attr_accessor :enemies, :pivot, :current_background
 
   BACKGROUND_DIM = 2310
 
   def initialize(options={})
-    @backgrounds = [Gosu::Image['assets/blue.png'], Gosu::Image['assets/purple.png'], Gosu::Image['assets/yellow.png']]
+    @backgrounds = [
+      { :color => :blue, :image => Gosu::Image['assets/blue.png']}, 
+      { :color => :yellow, :image => Gosu::Image['assets/yellow.png']}, 
+      { :color => :purple, :image => Gosu::Image['assets/purple.png']}]
+
     super options.merge(:image => @backgrounds[rand(@backgrounds.length)])
     self.x, self.y = Gamejam.center
     self.enemies = []
@@ -56,7 +60,9 @@ class World < Chingu::GameObject
   end
   
   def change_background
-    @image = @backgrounds[rand(@backgrounds.length)]
+    self.current_background = @backgrounds[rand(@backgrounds.length)]
+    @image = current_background[:image]
+    current_background
   end
   
   def draw_score
@@ -122,7 +128,11 @@ class EnemyWaves < Chingu::BasicGameObject
   end
   
   def all_enemies
-    self.waves.flatten
+    waves.flatten
+  end
+  
+  def of_color(color)
+    all_enemies.select { |enemy| enemy.color == color }
   end
   
   def kill_all
@@ -131,9 +141,9 @@ class EnemyWaves < Chingu::BasicGameObject
   end
   
   def spawn
-    enemies = 5.times.to_a.collect { Enemy.create($window.king) }
+    bg = $window.world.change_background
+    enemies = 5.times.to_a.collect { Enemy.create($window.king, bg[:color].to_s) }
     self.waves << enemies
-    $window.world.change_background
   end
   
   def current_wave
@@ -145,8 +155,11 @@ class Enemy < Chingu::GameObject
 
   has_traits :velocity, :bounding_circle, :collision_detection, :timer
 
-  def initialize(king, options={})
-    super options.merge(:image => Gosu::Image['assets/triangle.png'])
+  attr_accessor :color
+  
+  def initialize(king, color, options={})
+    self.color = color
+    super options.merge(:image => Gosu::Image["assets/triangle_#{color}.png"])
     case rand(3)
     when 0
       self.x, self.y = 0, rand(Gamejam.height)
