@@ -2,6 +2,12 @@ require 'gosu'
 require 'chingu'
 require 'angular_momentum'
 
+class Array
+  def random
+    self[rand(length)]
+  end
+end
+
 class Gamejam < Chingu::Window
   class << self
     def width; 960; end
@@ -10,40 +16,49 @@ class Gamejam < Chingu::Window
       [width / 2, height / 2]
     end
   end
-  
-  attr_accessor :score, :king, :enemy_waves, :world
+
+  attr_accessor :king, :director, :world
 
   def initialize
     super(self.class.width, self.class.height)
     self.world = World.create
     self.king = King.create
-    self.enemy_waves = EnemyWaves.create
-    enemy_waves.spawn
+    self.director = Director.create
+
     @crown = Crown.create
     @world.pivot = Pivot.create
     self.input = {:escape => :close}
-    self.score = 0
   end
 end
 
-class World < Chingu::GameObject
+# class GameOver < Chingu::GameState
+#   def update
+#     PulsatingText.destroy_if { |text| text.size == 100}
+#     PulsatingText.create("YOU DIED", :x => 400, :y => 200, :size => 100)
+#     $window.enemy_waves.kill_all
+#   end
+# end
 
+class World < Chingu::GameObject
   has_trait :angular_momentum, :max_angular_velocity => 8
   has_trait :timer
+  attr_accessor :enemies, :pivot, :colour
 
-  attr_accessor :enemies, :pivot, :current_background
+  def self.colours
+    @colours ||= [:red, :green, :blue]
+  end
 
-  BACKGROUND_DIM = 2310
+  def self.backgrounds
+    @backgrounds ||= {
+      :red => Gosu::Image['assets/red.png'],
+      :green => Gosu::Image['assets/green.png'],
+      :blue => Gosu::Image['assets/blue.png']
+    }
+  end
 
-  def initialize(options={})
-    @backgrounds = [
-      { :color => :blue, :image => Gosu::Image['assets/blue.png']}, 
-      { :color => :yellow, :image => Gosu::Image['assets/yellow.png']}, 
-      { :color => :purple, :image => Gosu::Image['assets/purple.png']}]
-
-    super options.merge(:image => @backgrounds[rand(@backgrounds.length)])
+  def initialize
+    super :image => change_colour!
     self.x, self.y = Gamejam.center
-    self.enemies = []
     self.input = {
       :mouse_left => :step_right,
       :holding_mouse_left => :rotate_right,
@@ -52,22 +67,22 @@ class World < Chingu::GameObject
       :holding_mouse_right => :rotate_left,
       :released_mouse_right => :stop_rotating_left
     }
+    # TODO This should be in Director
+    every(5000, :name => 'colour') { $window.world.change_colour! }
   end
 
   def update
-    $window.enemy_waves.current_wave.each {|enemy| transform(enemy)} unless previous_angle == angle
-    draw_score
+    Enemy.all.select {|e| e.colour == colour}.
+              each {|e| transform(e)} unless previous_angle == angle
   end
-  
-  def change_background
-    self.current_background = @backgrounds[rand(@backgrounds.length)]
-    @image = current_background[:image]
-    current_background
-  end
-  
-  def draw_score
-    PulsatingText.destroy_if { |text| text.size == 40}
-    PulsatingText.create($window.score, :x => 40, :y => Gamejam.height - 80, :size => 40)
+
+  def change_colour!
+    self.colour = self.class.colours.random
+    self.image = self.class.backgrounds[colour]
+    # Enemy.all.each do |e|
+    #   (e.color == color) ? e.show! : e.hide!
+    # end
+    image
   end
 
   def transform(child)
@@ -89,10 +104,6 @@ class World < Chingu::GameObject
   %w(left right).each do |dir|
 
     define_method "step_#{dir}" do
-      
-      # self.center_x = 0.25 # (center_x*BACKGROUND_DIM + $window.mouse_x-x) * Math.cos(angle.gosu_to_radians) / BACKGROUND_DIM
-      # self.center_y = 0.25 # (center_y*BACKGROUND_DIM + $window.mouse_y-y) * Math.sin(angle.gosu_to_radians) / BACKGROUND_DIM
-
       self.x += $window.mouse_x - x
       self.y += $window.mouse_y - y
 
@@ -113,54 +124,61 @@ class World < Chingu::GameObject
   end
 end
 
-class EnemyWaves < Chingu::BasicGameObject
+class Director < Chingu::BasicGameObject
   has_traits :timer
-  
-  attr_accessor :waves
-  
   def initialize
     super
-    self.waves = []
-    
-    every(3000, :name => 'spawning') do
-      spawn
-    end
+    every(1000, :name => 'spawn') { spawn }
   end
-  
-  def all_enemies
-    waves.flatten
-  end
-  
-  def of_color(color)
-    all_enemies.select { |enemy| enemy.color == color }
-  end
-  
-  def kill_all
-    all_enemies.each {|enemy| enemy.destroy}
-    stop_timers
-  end
-  
+
   def spawn
-    bg = $window.world.change_background
-    enemies = 5.times.to_a.collect { Enemy.create($window.king, bg[:color].to_s) }
-    self.waves << enemies
-  end
-  
-  def current_wave
-    waves.last
+    5.times  {|i| Enemy.create}
   end
 end
 
 class Enemy < Chingu::GameObject
-
   has_traits :velocity, :bounding_circle, :collision_detection, :timer
+  attr_accessor :king, :colour
 
-  attr_accessor :king, :color
-  
-  def initialize(king, color, options={})
-    self.king = king
-    self.color = color
-    super options.merge(:image => Gosu::Image["assets/triangle_#{color}.png"])
+  def self.images
+    @images ||= {
+      :red => Gosu::Image["assets/triangle_red.png"],
+      :green => Gosu::Image["assets/triangle_green.png"],
+      :blue => Gosu::Image["assets/triangle_blue.png"]
+    }
+  end
+
+  def initialize
+    self.king, self.colour = $window.king, $window.world.colour
+    super :image => self.class.images[colour]
+    place and point_at king
+
+    @death_animation = Chingu::Animation.new(:file => "assets/particle.png", :size => [32,32])
+  end
+
+  def update
+    return destroy unless will_be_visible?
+    self.class.all.each do |enemy|
+      if enemy != self && collision?(enemy)
+        king.shrink
+        during(1500) {
+          @image = @death_animation.next
+        }.then {
+          self.destroy
+        }
+      end
+    end
+  end
+
+  def speed
+    1
+  end
+
+  def will_be_visible?(pad=400)
+    x >= -pad && x <= ($window.width+pad) && y >= -pad && y <= ($window.height+pad)
+  end
+
+  def place
     case rand(3)
     when 0
       self.x, self.y = 0, rand(Gamejam.height)
@@ -171,27 +189,6 @@ class Enemy < Chingu::GameObject
     when 3
       self.x, self.y = rand(Gamejam.width), Gamejam.height - 1
     end
-
-    point_at king
-    @death_animation = Chingu::Animation.new(:file => "assets/particle.png", :size => [32,32])
-  end
-
-  def update
-    self.class.all.each do |enemy|
-      if enemy != self && collides?(enemy)
-        king.shrink
-        during(1500) { 
-          @image = @death_animation.next 
-        }.then {
-          self.destroy
-          $window.score += 1
-        }
-      end
-    end
-  end
-
-  def speed
-    1
   end
 
   def point_at(pt)
@@ -201,89 +198,55 @@ class Enemy < Chingu::GameObject
 end
 
 class Crown < Chingu::GameObject
-  def initialize(options={})
-    super options.merge(:image => Gosu::Image['assets/crown.png'])
+  def initialize
+    super :image => Gosu::Image['assets/crown.png']
     self.x, self.y = Gamejam.center
   end
 end
 
 class King < Chingu::GameObject
-  has_traits :bounding_box, :collision_detection
-  
-  attr_accessor :radius
-  
-  def initialize(options={})
-    super options.merge(:image => Gosu::Image['assets/king.png'])
+  has_traits :bounding_circle, :collision_detection
+  attr_accessor :size
+
+  INITIAL_SIZE = 30.0
+
+  def initialize
+    super :image => Gosu::Image['assets/king.png']
     self.x, self.y = Gamejam.center
-    self.radius = 15.0
+    self.size, self.factor = 0, INITIAL_SIZE / image.width
   end
-  
+
   def update
     Enemy.all.each do |enemy|
-      if self.bounding_circle_collision?(enemy)
-        $window.score -= 1
-        self.radius += 5
+      if collision?(enemy)
+        grow
         enemy.destroy
         # if $window.score < -20
         #   $window.push_game_state GameOver
         # end
       end
     end
-    self.factor = (radius * 2) / @image.width
+    self.factor = (INITIAL_SIZE + size * 2) / image.width
   end
-  
-  def shrink
-    self.radius -= 5 unless radius <= 15
-  end
-  
-end
 
-class GameOver < Chingu::GameState
-  def update
-    PulsatingText.destroy_if { |text| text.size == 100}
-    PulsatingText.create("YOU DIED", :x => 400, :y => 200, :size => 100)
-    $window.enemy_waves.kill_all
+  def grow
+    self.size += 5
   end
+
+  def shrink
+    self.size -= 1 unless size <= 0
+  end
+
 end
 
 class Pivot < Chingu::GameObject
-  def initialize(options={})
-    super options.merge(:image => Gosu::Image['assets/pivot.png'])
+  def initialize
+    super :image => Gosu::Image['assets/pivot.png']
   end
 
   def update
     self.x, self.y = $window.mouse_x, $window.mouse_y
   end
 end
-
-class PulsatingText < Chingu::Text
-  has_traits :timer, :effect
-  
-  def initialize(text, options = {})
-    super(text, options)
-    
-    options = text  if text.is_a? Hash
-    @pulse = options[:pulse] || false
-    self.rotation_center(:center_center)
-    every(20) { create_pulse }   if @pulse == false
-  end
-  
-  def create_pulse
-    pulse = PulsatingText.create(@text, :x => @x, :y => @y, :height => @height, :pulse => true, :image => @image, :zorder => @zorder+1)
-    colors = [Gosu::Color::RED, Gosu::Color::GREEN, Gosu::Color::BLUE]
-    pulse.color = colors[rand(colors.size)].dup
-    pulse.mode = :additive
-    pulse.alpha -= 150
-    pulse.scale_rate = 0.002
-    pulse.fade_rate = -3 + rand(2)
-    pulse.rotation_rate = rand(2)==0 ? 0.05 : -0.05
-  end
-    
-  def update
-    destroy if self.alpha == 0
-  end
-  
-end
-
 
 Gamejam.new.show
