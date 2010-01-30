@@ -77,11 +77,12 @@ class World < Chingu::GameObject
   end
 
   def change_colour!
-    self.colour = self.class.colours.random
+    next_index = ((self.class.colours.index(color) || 0)+1) % self.class.colours.size
+    self.colour = self.class.colours[next_index]
     self.image = self.class.backgrounds[colour]
-    # Enemy.all.each do |e|
-    #   (e.color == color) ? e.show! : e.hide!
-    # end
+    Enemy.all.each do |e|
+      e.image = self.class.images[(e.colour == colour) ? :active : e.colour]
+    end
     image
   end
 
@@ -128,7 +129,7 @@ class Director < Chingu::BasicGameObject
   has_traits :timer
   def initialize
     super
-    every(1000, :name => 'spawn') { spawn }
+    every(5000, :name => 'spawn') { spawn }
   end
 
   def spawn
@@ -144,7 +145,8 @@ class Enemy < Chingu::GameObject
     @images ||= {
       :red => Gosu::Image["assets/triangle_red.png"],
       :green => Gosu::Image["assets/triangle_green.png"],
-      :blue => Gosu::Image["assets/triangle_blue.png"]
+      :blue => Gosu::Image["assets/triangle_blue.png"],
+      :active => Gosu::Image["assets/triangle.png"]
     }
   end
 
@@ -162,9 +164,9 @@ class Enemy < Chingu::GameObject
       if enemy != self && collision?(enemy)
         king.shrink
         during(1500) {
-          @image = @death_animation.next
+          image = @death_animation.next
         }.then {
-          self.destroy
+          destroy
         }
       end
     end
@@ -174,12 +176,12 @@ class Enemy < Chingu::GameObject
     1
   end
 
-  def will_be_visible?(pad=400)
+  def will_be_visible?(pad=200)
     x >= -pad && x <= ($window.width+pad) && y >= -pad && y <= ($window.height+pad)
   end
 
   def place
-    case rand(3)
+    case rand(4)
     when 0
       self.x, self.y = 0, rand(Gamejam.height)
     when 1
