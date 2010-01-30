@@ -155,9 +155,10 @@ class Enemy < Chingu::GameObject
 
   has_traits :velocity, :bounding_circle, :collision_detection, :timer
 
-  attr_accessor :color
+  attr_accessor :king, :color
   
   def initialize(king, color, options={})
+    self.king = king
     self.color = color
     super options.merge(:image => Gosu::Image["assets/triangle_#{color}.png"])
     case rand(3)
@@ -178,7 +179,13 @@ class Enemy < Chingu::GameObject
   def update
     self.class.all.each do |enemy|
       if enemy != self && collides?(enemy)
-        during(1500) { @image = @death_animation.next }.then {self.destroy; $window.score += 1}
+        king.shrink
+        during(1500) { 
+          @image = @death_animation.next 
+        }.then {
+          self.destroy
+          $window.score += 1
+        }
       end
     end
   end
@@ -203,28 +210,32 @@ end
 class King < Chingu::GameObject
   has_traits :bounding_box, :collision_detection
   
-  attr_accessor :size
+  attr_accessor :radius
   
   def initialize(options={})
     super options.merge(:image => Gosu::Image['assets/king.png'])
     self.x, self.y = Gamejam.center
-    self.size = 10.0
+    self.radius = 15.0
   end
   
   def update
     Enemy.all.each do |enemy|
-      if self.collides?(enemy)
+      if self.bounding_circle_collision?(enemy)
         $window.score -= 1
-        self.size += 10
+        self.radius += 5
         enemy.destroy
         # if $window.score < -20
         #   $window.push_game_state GameOver
         # end
       end
     end
-    self.factor = size / 2310
-    
+    self.factor = (radius * 2) / @image.width
   end
+  
+  def shrink
+    self.radius -= 5 unless radius <= 15
+  end
+  
 end
 
 class GameOver < Chingu::GameState
