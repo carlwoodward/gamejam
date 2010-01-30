@@ -83,8 +83,9 @@ class World < Chingu::GameObject
   %w(left right).each do |dir|
 
     define_method "step_#{dir}" do
-      self.center_x = (center_x*BACKGROUND_DIM + $window.mouse_x-x) * Math.cos(angle) / BACKGROUND_DIM
-      self.center_y = (center_y*BACKGROUND_DIM + $window.mouse_y-y) * Math.sin(angle) / BACKGROUND_DIM
+      
+      # self.center_x = 0.25 # (center_x*BACKGROUND_DIM + $window.mouse_x-x) * Math.cos(angle.gosu_to_radians) / BACKGROUND_DIM
+      # self.center_y = 0.25 # (center_y*BACKGROUND_DIM + $window.mouse_y-y) * Math.sin(angle.gosu_to_radians) / BACKGROUND_DIM
 
       self.x += $window.mouse_x - x
       self.y += $window.mouse_y - y
@@ -146,7 +147,17 @@ class Enemy < Chingu::GameObject
 
   def initialize(king, options={})
     super options.merge(:image => Gosu::Image['assets/triangle.png'])
-    self.x, self.y = rand(Gamejam.width), rand(Gamejam.height)
+    case rand(3)
+    when 0
+      self.x, self.y = 0, rand(Gamejam.height)
+    when 1
+      self.x, self.y = Gamejam.width - 1, rand(Gamejam.height)
+    when 2
+      self.x, self.y = rand(Gamejam.width), 0
+    when 3
+      self.x, self.y = rand(Gamejam.width), Gamejam.height - 1
+    end
+
     point_at king
     @death_animation = Chingu::Animation.new(:file => "assets/particle.png", :size => [32,32])
   end
@@ -179,22 +190,27 @@ end
 class King < Chingu::GameObject
   has_traits :bounding_box, :collision_detection
   
+  attr_accessor :size
+  
   def initialize(options={})
     super options.merge(:image => Gosu::Image['assets/king.png'])
     self.x, self.y = Gamejam.center
-    self.factor = 30.0 / 2310
+    self.size = 10.0
   end
   
   def update
     Enemy.all.each do |enemy|
       if self.collides?(enemy)
         $window.score -= 1
+        self.size += 10
         enemy.destroy
-        if $window.score < -20
-          $window.push_game_state GameOver
-        end
+        # if $window.score < -20
+        #   $window.push_game_state GameOver
+        # end
       end
     end
+    self.factor = size / 2310
+    
   end
 end
 
