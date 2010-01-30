@@ -83,8 +83,8 @@ class World < Chingu::GameObject
   %w(left right).each do |dir|
 
     define_method "step_#{dir}" do
-      self.center_x = (center_x*BACKGROUND_DIM + $window.mouse_x-x) / BACKGROUND_DIM
-      self.center_y = (center_y*BACKGROUND_DIM + $window.mouse_y-y) / BACKGROUND_DIM
+      self.center_x = (center_x*BACKGROUND_DIM + $window.mouse_x-x) * Math.cos(angle) / BACKGROUND_DIM
+      self.center_y = (center_y*BACKGROUND_DIM + $window.mouse_y-y) * Math.sin(angle) / BACKGROUND_DIM
 
       self.x += $window.mouse_x - x
       self.y += $window.mouse_y - y
